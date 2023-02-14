@@ -12,3 +12,6 @@ As this file is only valid when all commits modifying it where signed with an at
 
 ## Problems
 This signing scheme is vulnerable to some git history rewrite attacks as well as forged git commit dates when a key was compromised and revoked.
+
+## Example
+As an example this repo has some signed commits managed by itself. The first trusted anchor commit in this repo is `0b89545db211f2197bf6448139497b14748859b2`. Please note that the commit hash is just listed here for demonstration purposes. Normally the trust anchor should be delivered over a verified and trusted independant channel as the README.md could be freely manipulated by an attacker.
