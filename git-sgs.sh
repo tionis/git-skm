@@ -29,6 +29,10 @@ verify-one-commit(){
       echo "$line" >> "$out"
     fi
   done || return 1
+  if ! test -f "$dir/commit.sig"; then
+    echo "Could not detect signature for commit $commit"
+    return 1
+  fi
   # finally verify commit
   ssh-keygen \
     -Y verify \
@@ -40,14 +44,14 @@ verify-one-commit(){
 
 check-allowed-signers(){
   # Abort if there is no allowed_signers to check against
-  # Warning: this could be outside of the git repo and break some code in the trust chain
   allowed_signers_absolute_path=$(git config gpg.ssh.allowedSignersFile)
   if test -z "$allowed_signers_absolute_path"; then
     git config gpg.ssh.allowedSignersFile "$(pwd)/.allowed_signers"
     allowed_signers_absolute_path=$(git config gpg.ssh.allowedSignersFile)
   fi
   repo_root=$(git rev-parse --show-toplevel)
-  allowed_signers_relative_path=${allowed_signers_absolute_path##$repo_root/}
+  allowed_signers_relative_path=${allowed_signers_absolute_path##"$repo_root/"}
+  # TODO ensure relative path is available in whole script
   if test "$allowed_signers_relative_path" = "$allowed_signers_absolute_path"; then
     # allowed_signers is outside of current git repo
     dont_verify_allowed_signers=true # TODO integrate this var with rest
@@ -92,7 +96,7 @@ ensure-allowed-signers-trusted(){
     last_verified_commit="$commit"
     ((max=max-1))
   done
-  git config verify.last-verified-commit "$last_verified_commit"
+  git config sgs.last-verified-commit "$last_verified_commit"
   echo "allowed_signers was verified"
 }
 
@@ -110,13 +114,17 @@ case "$1" in
     ;;
   verify)
     ensure-allowed-signers-trusted
-    git verify-commit "${2:-HEAD}"
+    git verify-commit "${2:-HEAD}" || exit 1
     ;;
   trust)
-    git config sgs.last-verified-commit "$2"
+    if test -z "$2"; then
+      git config sgs.last-verified-commit
+    else
+      git config sgs.last-verified-commit "$2"
+    fi
     ;;
   *)
     ensure-allowed-signers-trusted
-    git verify-commit "${1:-HEAD}"
+    git verify-commit "${1:-HEAD}" || exit 1
     ;;
 esac

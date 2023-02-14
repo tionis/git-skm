@@ -9,3 +9,6 @@ As this file is only valid when all commits modifying it where signed with an at
 3. If the commit hash of the previous step matched the trusted commit hash the .allowed_signers file can be trusted, if not continue
 4. Walk back the previous commits modfying the file until you find one that is trusted (if none is found at the top most commit, throw an error or trust it on first use if the config allows as such)
 5. Verify each walked commit and mark it as trusted in reverse order, if any verification fails, throw an error
+
+## Problems
+This signing scheme is vulnerable to some git history rewrite attacks as well as forged git commit dates when a key was compromised and revoked.
