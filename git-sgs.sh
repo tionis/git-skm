@@ -44,10 +44,10 @@ verify-one-commit(){
 
 check-allowed-signers(){
   # Abort if there is no allowed_signers to check against
-  allowed_signers_absolute_path=$(git config gpg.ssh.allowedSignersFile)
+  allowed_signers_absolute_path=$(git config --local gpg.ssh.allowedSignersFile)
   if test -z "$allowed_signers_absolute_path"; then
-    git config gpg.ssh.allowedSignersFile "$(pwd)/.allowed_signers"
-    allowed_signers_absolute_path=$(git config gpg.ssh.allowedSignersFile)
+    git config --local gpg.ssh.allowedSignersFile "$(pwd)/.allowed_signers"
+    allowed_signers_absolute_path=$(git config --local gpg.ssh.allowedSignersFile)
   fi
   repo_root=$(git rev-parse --show-toplevel)
   allowed_signers_relative_path=${allowed_signers_absolute_path##"$repo_root/"}
