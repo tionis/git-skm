@@ -28,14 +28,14 @@ verify-commit(){
     else
       echo "$line" >> "$out"
     fi
-  done
+  done || return 1
   # finally verify commit
   ssh-keygen \
     -Y verify \
     -f "$dir/allowed_signers" \
     -n git \
     -s "$dir/commit.sig" \
-    -I "$(ssh-keygen -Y find-principals -s "$dir/commit.sig" -f "$dir/allowed_signers")" < "$dir/commit.raw"
+    -I "$(ssh-keygen -Y find-principals -s "$dir/commit.sig" -f "$dir/allowed_signers")" < "$dir/commit.raw" || return 1
 }
 
 # Abort if there is no .allowed_signers to check against
