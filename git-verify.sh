@@ -9,9 +9,32 @@ die(){
 }
 
 verify-commit(){
+  # Verify a commit using the .allowed_signers from it's parent
   commit="$1"
-  # TODO look up allowed_signers in parent of commit
-  # TODO verify commit using the looked up allowed_signers file
+  dir=$(mktemp -d) # create a tempdir
+
+  # load parents allowed_signers
+  git show "${commit}^:.allowed_signers" > "$dir/allowed_signers"
+
+  # extract signature from commit object
+  out="$dir/commit.raw"
+  git cat-file -p "$commit" | while read -r line; do
+    if (echo "$line" | grep '^gpgsig -----BEGIN SSH SIGNATURE-----$' >/dev/null); then
+      out="$dir/commit.sig"
+      echo "$line" | grep -oP '(?<=gpgsig ).*$' >> "$out"
+    elif (echo "$line" | grep '^-----END SSH SIGNATURE-----$' >/dev/null); then
+      echo "$line" >> "$out"
+      out="$dir/commit.raw"
+    else
+      echo "$line" >> "$out"
+    fi
+  done
+  # this is ugly, error-prone and will not scale unlimited, but it should work for now
+  principals="$(grep -o '^[^ ]*' < "$dir/allowed_signers" | while read -r principal; do
+    printf '-I "%s" ' "$principal";
+  done)"
+  # finally verify commit
+  ssh-keygen -Y verify -f "$dir/allowed_signers" -n git -s "$dir/commit.sig" $principals < "$dir/commit.raw"
 }
 
 # Abort if there is no .allowed_signers to check against
@@ -20,9 +43,9 @@ if ! test -f ".allowed_signers"; then
 fi
 
 # Get last_verified_commit as trust anchor
-last_verified_commit="$(git config verify.last_verified_commit)"
+last_verified_commit="$(git config verify.last-verified-commit)"
 if test -z "$last_verified_commit"; then
-  die "No last verified commit set, please set it as the root of trust using 'git config verify.last_verified_commit \$COMMIT_HASH'"
+  die "No last verified commit set, please set it as the root of trust using 'git config verify.last-verified-commit \$COMMIT_HASH'"
 fi
 
 # Build array of commits to verify
@@ -44,4 +67,17 @@ fi
 min=0
 max=$(( ${#commits_to_verify[@]} -1 ))
 while test $min -le $max; do
-  commit="${commits_to
+  commit="${commits_to_verify[$max]}"
+  verify-commit "$commit" || die "Could not verify commit $commit"
+  last_verified_commit="$commit"
+  ((max=max-1))
+done
+
+# Verify commit specified by user with now verified .allowed_signers file
+git config verify.last-verified-commit "$last_verified_commit"
+echo ".allowed_signers file was verified, checking specified object..."
+if test -z "$1"; then
+  git verify-commit HEAD
+else
+  git verify-commit "$1"
+fi
