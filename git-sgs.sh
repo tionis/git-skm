@@ -9,12 +9,12 @@ die(){
 }
 
 verify-one-commit(){
-  # Verify a commit using the .allowed_signers from it's parent
+  # Verify a commit using the allowed_signers from it's parent
   commit="$1"
   dir=$(mktemp -d) # create a tempdir
 
   # load parents allowed_signers
-  git show "${commit}^:.allowed_signers" > "$dir/allowed_signers"
+  git show "${commit}^:$allowed_signers_relative_path" > "$dir/allowed_signers"
 
   # extract signature from commit object
   out="$dir/commit.raw"
@@ -39,22 +39,37 @@ verify-one-commit(){
 }
 
 check-allowed-signers(){
-  # Abort if there is no .allowed_signers to check against
-  if ! test -f ".allowed_signers"; then
-    die "No .allowed_signers found!"
+  # Abort if there is no allowed_signers to check against
+  # Warning: this could be outside of the git repo and break some code in the trust chain
+  allowed_signers_absolute_path=$(git config gpg.ssh.allowedSignersFile)
+  if test -z "$allowed_signers_absolute_path"; then
+    git config gpg.ssh.allowedSignersFile "$(pwd)/.allowed_signers"
+    allowed_signers_absolute_path=$(git config gpg.ssh.allowedSignersFile)
+  fi
+  repo_root=$(git rev-parse --show-toplevel)
+  allowed_signers_relative_path=${allowed_signers_absolute_path##$repo_root/}
+  if test "$allowed_signers_relative_path" = "$allowed_signers_absolute_path"; then
+    # allowed_signers is outside of current git repo
+    dont_verify_allowed_signers=true # TODO integrate this var with rest
+  fi
+  if ! test -f "$allowed_signers_absolute_path"; then
+    die "No allowed_signers found!"
   fi
 }
 
 ensure-allowed-signers-trusted(){
   check-allowed-signers
+  if test "$dont_verify_allowed_signers" = "true"; then
+    return
+  fi
   # Get last_verified_commit as trust anchor
-  last_verified_commit="$(git config verify.last-verified-commit)"
+  last_verified_commit="$(git config sgs.last-verified-commit)"
   if test -z "$last_verified_commit"; then
-    die "No last verified commit set, please set it as the root of trust using 'git config verify.last-verified-commit \$COMMIT_HASH'"
+    die "No last verified commit set, please set it as the root of trust using 'git config sgs.last-verified-commit \$COMMIT_HASH' or 'git sgs trust \$COMMIT_HASH'"
   fi
 
   # Build array of commits to verify
-  all_commits="$(git log --pretty=format:%H .allowed_signers)"
+  all_commits="$(git log --pretty=format:%H "$allowed_signers_relative_path")"
   commits_to_verify=()
   for commit in $all_commits; do
     if ! test "$commit" = "$last_verified_commit"; then
@@ -78,7 +93,7 @@ ensure-allowed-signers-trusted(){
     ((max=max-1))
   done
   git config verify.last-verified-commit "$last_verified_commit"
-  echo ".allowed_signers was verified"
+  echo "allowed_signers was verified"
 }
 
 print-help(){
@@ -86,7 +101,7 @@ print-help(){
   echo "available subcommands:"
   echo "  help - show this help"
   echo "  verify - verify a specific commit (or HEAD if no commit ref was given)"
-  echo "  trust - set trust anchor"
+  echo "  trust - set trust anchor (this is the last commit hash that you trust)"
 }
 
 case "$1" in
@@ -98,7 +113,7 @@ case "$1" in
     git verify-commit "${2:-HEAD}"
     ;;
   trust)
-    git config verify.last-verified-commit "$2"
+    git config sgs.last-verified-commit "$2"
     ;;
   *)
     ensure-allowed-signers-trusted
