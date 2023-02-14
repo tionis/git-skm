@@ -29,12 +29,13 @@ verify-commit(){
       echo "$line" >> "$out"
     fi
   done
-  # this is ugly, error-prone and will not scale unlimited, but it should work for now
-  principals="$(grep -o '^[^ ]*' < "$dir/allowed_signers" | while read -r principal; do
-    printf '-I "%s" ' "$principal";
-  done)"
   # finally verify commit
-  ssh-keygen -Y verify -f "$dir/allowed_signers" -n git -s "$dir/commit.sig" $principals < "$dir/commit.raw"
+  ssh-keygen \
+    -Y verify \
+    -f "$dir/allowed_signers" \
+    -n git \
+    -s "$dir/commit.sig" \
+    -I "$(ssh-keygen -Y find-principals -s "$dir/commit.sig" -f "$dir/allowed_signers")" < "$dir/commit.raw"
 }
 
 # Abort if there is no .allowed_signers to check against
