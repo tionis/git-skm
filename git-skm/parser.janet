@@ -21,7 +21,7 @@
     :unix-time (repeat 10 :d)
     :offset (* (+ "+" "-") (repeat 4 :d))
     :gpgsig (+ (* "gpgsig -----BEGIN SSH SIGNATURE-----" (thru "-----END SSH SIGNATURE-----\n"))
-               (* "gpgsig -----BEGIN PGP SIGNATURE-----" (thru "-----END PGP SIGNATURE-----\n \n")))
+               (* "gpgsig -----BEGIN PGP SIGNATURE-----" (thru (* "-----END PGP SIGNATURE-----\n" (opt " \n")))))
     }))
 
 (defn parse-commit [commit]
