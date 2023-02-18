@@ -44,10 +44,10 @@ verify-one-commit(){
 
 check-allowed-signers(){
   # Abort if there is no allowed_signers to check against
-  allowed_signers_absolute_path=$(git config --local gpg.ssh.allowedSignersFile)
+  allowed_signers_absolute_path=$(git config --local skm.allowedSignersFile)
   if test -z "$allowed_signers_absolute_path"; then
-    git config --local gpg.ssh.allowedSignersFile "$(pwd)/.allowed_signers"
-    allowed_signers_absolute_path=$(git config --local gpg.ssh.allowedSignersFile)
+    git config --local skm.allowedSignersFile "$(pwd)/.allowed_signers"
+    allowed_signers_absolute_path=$(git config --local skm.allowedSignersFile)
   fi
   repo_root=$(git rev-parse --show-toplevel)
   allowed_signers_relative_path=${allowed_signers_absolute_path##"$repo_root/"}
@@ -67,9 +67,9 @@ ensure-allowed-signers-trusted(){
     return
   fi
   # Get last_verified_commit as trust anchor
-  last_verified_commit="$(git config sgs.last-verified-commit)"
+  last_verified_commit="$(git config skm.last-verified-commit)"
   if test -z "$last_verified_commit"; then
-    die "No last verified commit set, please set it as the root of trust using 'git config sgs.last-verified-commit \$COMMIT_HASH' or 'git sgs trust \$COMMIT_HASH'"
+    die "No last verified commit set, please set it as the root of trust using 'git config skm.last-verified-commit \$COMMIT_HASH' or 'git skm trust \$COMMIT_HASH'"
   fi
 
   # Build array of commits to verify
@@ -96,14 +96,18 @@ ensure-allowed-signers-trusted(){
     last_verified_commit="$commit"
     ((max=max-1))
   done
-  git config sgs.last-verified-commit "$last_verified_commit"
-  echo "allowed_signers was verified"
+  git config skm.last-verified-commit "$last_verified_commit"
+  allowed_signers_cache_file_path="$(realpath "$(git rev-parse --git-dir)")/allowed_signers"
+  cp "$allowed_signers_absolute_path" "$allowed_signers_cache_file_path"
+  git config gpg.ssh.allowedSignersFile "$allowed_signers_absolute_path"
+  echo "allowed_signers was verified and copied into git_dir"
 }
 
 print-help(){
   echo "simple git signatures"
   echo "available subcommands:"
   echo "  help - show this help"
+  echo "  generate - generate the allowed_signers file and do nothing else"
   echo "  verify - verify a specific commit (or HEAD if no commit ref was given)"
   echo "  trust - set trust anchor (this is the last commit hash that you trust)"
 }
@@ -116,11 +120,14 @@ case "$1" in
     ensure-allowed-signers-trusted
     git verify-commit "${2:-HEAD}" || exit 1
     ;;
+  generate)
+    ensure-allowed-signers-trusted
+    ;;
   trust)
     if test -z "$2"; then
-      git config sgs.last-verified-commit
+      git config skm.last-verified-commit
     else
-      git config sgs.last-verified-commit "$2"
+      git config skm.last-verified-commit "$2"
     fi
     ;;
   *)
