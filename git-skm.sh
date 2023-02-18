@@ -108,7 +108,7 @@ print-help(){
   echo "available subcommands:"
   echo "  help - show this help"
   echo "  generate - generate the allowed_signers file and do nothing else"
-  echo "  verify - verify a specific commit (or HEAD if no commit ref was given)"
+  echo "  verify-commit - verify a specific commit (or HEAD if no commit ref was given)"
   echo "  trust - set trust anchor (this is the last commit hash that you trust)"
 }
 
@@ -116,7 +116,7 @@ case "$1" in
   help|--help|-h|h)
     print-help
     ;;
-  verify)
+  verify-commit)
     ensure-allowed-signers-trusted
     git verify-commit "${2:-HEAD}" || exit 1
     ;;
@@ -130,8 +130,10 @@ case "$1" in
       git config skm.last-verified-commit "$2"
     fi
     ;;
+  encrypt|decrypt|verify|gen-keys)
+    die "not implemented yet"
+    ;;
   *)
-    ensure-allowed-signers-trusted
-    git verify-commit "${1:-HEAD}" || exit 1
+    print-help
     ;;
 esac
