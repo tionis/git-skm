@@ -4,6 +4,11 @@ For this an allowed_signers file containing the signing (ssh) keys and their val
 As this file is only valid when all commits modifying it where signed with an at the time valid key this key registry can be trusted.  
 Furthermore an encryption key can be generated that is tied to a specific signing key. This can be used to encrypt data for a specific siging key.
 
+## Runtime Dependencies
+- janet
+- git
+- ssh-keygen
+
 ## Rough Outline of Verification Algorithm
 1. Look up the last trusted commit hash
 2. Look up what commit last modified .allowed_signers
