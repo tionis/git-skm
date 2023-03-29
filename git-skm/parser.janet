@@ -25,6 +25,14 @@
     }))
 
 (defn parse-commit [commit]
-  (peg/match commit-grammar commit))
+  (first (peg/match commit-grammar commit)))
 
-(defn render-commit [parsed-commit])
+(defn render-commit [commit]
+  (def out @"")
+  (buffer/push out "tree " (commit :tree) "\n")
+  (each parent (commit :parents) (buffer/push out "parent " parent "\n"))
+  (buffer/push out "author " (get-in commit [:author :name]) " <" (get-in commit [:author :email]) "> " (get-in commit [:author :timestamp :time]) " " (get-in commit [:author :timestamp :offset]) "\n")
+  (buffer/push out "committer " (get-in commit [:committer :name]) " <" (get-in commit [:committer :email]) "> " (get-in commit [:committer :timestamp :time]) " " (get-in commit [:committer :timestamp :offset]) "\n")
+  (when (commit :gpgsig) (buffer/push out (commit :gpgsig)))
+  (buffer/push out "\n" (commit :message))
+  (freeze out))
