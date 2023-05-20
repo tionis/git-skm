@@ -3,12 +3,12 @@
                       :parents
                       "author " :person "\n"
                       "committer " :person "\n"
-                      (opt (* (capture :gpgsig)))
+                      (opt (* :gpgsig))
                       "\n"
                       (capture (to -1)))
                     ,(fn [& args]
                        (if (= (length args) 6)
-                         {:tree (args 0) :parents (args 1) :author (args 2) :committer (args 3) :gpgsig (args 4) :message (args 5)}
+                         {:tree (args 0) :parents (args 1) :author (args 2) :committer (args 3) :gpgsig (string/replace-all "\n " "\n" (args 4)) :message (args 5)}
                          {:tree (args 0) :parents (args 1) :author (args 2) :committer (args 3) :message (args 4)})))
     :parents (replace (any (* "parent " (capture :object-id) "\n"))
                       ,(fn [& x] x))
@@ -20,8 +20,8 @@
                         ,|{:time $0 :offset $1})
     :unix-time (repeat 10 :d)
     :offset (* (+ "+" "-") (repeat 4 :d))
-    :gpgsig (+ (* "gpgsig -----BEGIN SSH SIGNATURE-----" (thru "-----END SSH SIGNATURE-----\n"))
-               (* "gpgsig -----BEGIN PGP SIGNATURE-----" (thru (* "-----END PGP SIGNATURE-----\n" (opt " \n")))))
+    :gpgsig (+ (* "gpgsig " (capture (* "-----BEGIN SSH SIGNATURE-----" (thru "-----END SSH SIGNATURE-----\n"))))
+               (* "gpgsig " (capture (* "-----BEGIN PGP SIGNATURE-----" (thru (* "-----END PGP SIGNATURE-----\n" (opt " \n")))))))
     }))
 
 (defn parse-commit [commit]
@@ -33,6 +33,6 @@
   (each parent (commit :parents) (buffer/push out "parent " parent "\n"))
   (buffer/push out "author " (get-in commit [:author :name]) " <" (get-in commit [:author :email]) "> " (get-in commit [:author :timestamp :time]) " " (get-in commit [:author :timestamp :offset]) "\n")
   (buffer/push out "committer " (get-in commit [:committer :name]) " <" (get-in commit [:committer :email]) "> " (get-in commit [:committer :timestamp :time]) " " (get-in commit [:committer :timestamp :offset]) "\n")
-  (when (commit :gpgsig) (buffer/push out (commit :gpgsig)))
-  (buffer/push out "\n" (commit :message))
+  (when (commit :gpgsig) (buffer/push out "gpgsig " (string/replace-all "\n" "\n " (commit :gpgsig))))
+  (buffer/push out "\n" (commit :message) "\n")
   (freeze out))

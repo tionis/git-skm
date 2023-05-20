@@ -3,16 +3,16 @@
 
 (defn cli/trust [args]
   (if (first args)
-    (trust (first args))
+    (trust (os/cwd) (first args))
     (error "no commit hash to trust given")))
 
 (defn cli/generate-allowed-signers [args]
-  (generate-allowed-signers))
+  (generate-allowed-signers (os/cwd) "HEAD"))
 
 (defn cli/verify-commit [args]
   (if (first args)
-    (verify-commit (first args))
-    (verify-commit "HEAD")))
+    (verify-commit (os/cwd) (first args))
+    (verify-commit (os/cwd) "HEAD")))
 
 (defn cli/help []
   (print `simple key management
