@@ -2,17 +2,20 @@
 (use ./init)
 
 (defn cli/trust [args]
+  (setdyn :repo-path (os/cwd))
   (if (first args)
-    (trust (os/cwd) (first args))
+    (trust (first args))
     (error "no commit hash to trust given")))
 
 (defn cli/generate-allowed-signers [args]
-  (generate-allowed-signers (os/cwd) "HEAD"))
+  (setdyn :repo-path (os/cwd))
+  (generate-allowed-signers "HEAD"))
 
 (defn cli/verify-commit [args]
+  (setdyn :repo-path (os/cwd))
   (if (first args)
-    (verify-commit (os/cwd) (first args))
-    (verify-commit (os/cwd) "HEAD")))
+    (verify-commit (first args))
+    (verify-commit "HEAD")))
 
 (defn cli/help []
   (print `simple key management
